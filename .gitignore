@@ -1,0 +1,21 @@
+# Ejecutables de Windows
+*.exe
+*.out
+*.app
+
+# Archivos de objetos y librerías
+*.o
+*.obj
+*.dll
+*.so
+
+# Carpetas de VS Code y compiladores
+.vscode/
+bin/
+obj/
+debug/
+release/
+
+# Archivos temporales del sistema
+Thumbs.db
+.DS_Store
