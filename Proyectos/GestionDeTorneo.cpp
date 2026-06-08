@@ -171,6 +171,75 @@ s->siguienteIdPartido = 1;
 
 }
 
+//Funciones de redimensionamiento
+
+void redimensionarEquipos(SistemaDeportivo* s){
+if(!(s->numEquipos == s->capacidadEquipos)){
+
+return;
+}
+
+int nuevaCapacidad = s->capacidadEquipos * 2;
+Equipo* nuevosEquipos = new Equipo[nuevaCapacidad];
+
+for(int i = 0; i < s->numEquipos; i++){
+nuevosEquipos[i] = s->equipos[i];
+
+}
+
+delete[] s->equipos;
+
+s->equipos = nuevosEquipos;
+s->capacidadEquipos = nuevaCapacidad;
+
+}
+
+void redimensionarJugadores(SistemaDeportivo* s){
+
+if(!(s->numJugadores == s->capacidadJugadores)){
+
+return;
+}
+
+int nuevaCapacidad = s->capacidadJugadores * 2;
+Jugador* nuevosJugadores = new Jugador[nuevaCapacidad];
+
+for(int i = 0; i < s->numJugadores; i++){
+nuevosJugadores[i] = s->jugadores[i];
+
+}
+
+delete[] s->jugadores;
+
+s->jugadores = nuevosJugadores;
+s->capacidadJugadores = nuevaCapacidad;
+
+}
+
+void redimensionarPartidos(SistemaDeportivo* s){
+
+if(!(s->numPartidos == s->capacidadPartidos)){
+
+return;
+}
+
+int nuevaCapacidad = s->capacidadPartidos * 2;
+Partido* nuevosPartidos = new Partido[nuevaCapacidad];
+
+for(int i = 0; i < s->numPartidos; i++){
+nuevosPartidos[i] = s->partidos[i];
+
+}
+
+delete[] s->partidos;
+
+s->partidos = nuevosPartidos;
+s->capacidadPartidos = nuevaCapacidad;
+
+}
+
+
+
 
 int main() {
     
