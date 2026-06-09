@@ -241,6 +241,47 @@ s->capacidadPartidos = nuevaCapacidad;
 
 
 
+Equipo* agregarEquipo(SistemaDeportivo* s, const char* nombre, const char* ciudad, const char* entrenador){
+
+    for(int i = 0; i < s->numEquipos; i++){ //Aqui verificamos si el nombre puesto de parametro ya existe, si existe, retornamos nullptr
+       if (strcmp(s->equipos[i].nombre, nombre) == 0) {
+    return nullptr;
+}
+
+    }
+
+if(s->numEquipos == s->capacidadEquipos){
+redimensionarEquipos(s);
+}
+
+
+
+int pos = s->numEquipos; //La siguiente posicion vacia 
+s->equipos[pos].id = s->siguienteIdEquipo; //Primero hacemos que el equipo tenga su id autoincremental
+s->siguienteIdEquipo++;
+
+
+
+strcpy(s->equipos[pos].nombre, nombre);
+strcpy(s->equipos[pos].city, ciudad);
+strcpy(s->equipos[pos].entrenador, entrenador);
+
+
+// Inicializamos todas las estadísticas deportivas en 0
+    s->equipos[pos].puntos = 0;
+    s->equipos[pos].victorias = 0;
+    s->equipos[pos].empates = 0;
+    s->equipos[pos].derrotas = 0;
+    s->equipos[pos].puntosAFavor = 0;
+    s->equipos[pos].puntosEnContra = 0;
+
+
+
+
+
+}
+
+
 int main() {
     
     
