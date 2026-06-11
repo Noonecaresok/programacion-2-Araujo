@@ -588,6 +588,152 @@ bool eliminarJugador(SistemaDeportivo* s, int id){
     return false; //No se encontro el id
 }
 
+//Retorna puntero al partido con ese ID
+Partido* buscarPartidoPorID(SistemaDeportivo* s, int id){
+    for(int i = 0; i < s->numPartidos; i++){
+        if(s->partidos[i].id == id){//Si encontramos el id del partido, retornamos su direccion
+            return &(s->partidos[i]);
+        }
+    }
+    return nullptr;//Si no se encuentra el partido retornamos nullptr
+}
+
+//Programa un partido entre dos equipos
+Partido* programarPartido(SistemaDeportivo* s, int idLocal, int idVisitante, const char* fecha, const char* descripcion){
+    if(idLocal == idVisitante){//Validamos que un equipo no juegue contra el mismo
+        return nullptr;
+    }
+
+    Equipo* local = buscarEquipoPorID(s, idLocal);
+    Equipo* visitante = buscarEquipoPorID(s, idVisitante);
+    if(local == nullptr || visitante == nullptr){//Verificamos que los dos equipos existan en el sistema
+        return nullptr;
+    }
+
+    for(int i = 0; i < s->numPartidos; i++){//Verificamos si ya existe un partido programado entre los dos
+        if((s->partidos[i].idEquipoLocal == idLocal && s->partidos[i].idEquipoVisitante == idVisitante) || 
+           (s->partidos[i].idEquipoLocal == idVisitante && s->partidos[i].idEquipoVisitante == idLocal)){
+            if(strcmp(s->partidos[i].estado, "PROGRAMADO") == 0){
+                return nullptr;//Si ya tienen un partido pendiente, retornamos nullptr, es decir, abortamos la operacion
+            }
+        }
+    }
+
+    if(s->numPartidos == s->capacidadPartidos){ //La misma logica de redimensionamiento
+        redimensionarPartidos(s);
+    }
+
+    int pos = s->numPartidos;//Siguiente posicion vacia en el array de partidos
+    s->partidos[pos].id = s->siguienteIdPartido;//Asignamos el id autoincremental
+    s->siguienteIdPartido++;
+
+    s->partidos[pos].idEquipoLocal = idLocal;
+    s->partidos[pos].idEquipoVisitante = idVisitante;
+    s->partidos[pos].puntosLocal = 0;//Inicializa en 0 porque esta programado
+    s->partidos[pos].puntosVisitante = 0;
+    strcpy(s->partidos[pos].fecha, fecha);
+    strcpy(s->partidos[pos].estado, "PROGRAMADO");
+    strcpy(s->partidos[pos].descripcion, descripcion);
+
+    s->numPartidos++;//Incrementamos el contador de partidos totales
+    return &(s->partidos[pos]);//Retornamos el puntero del partido creado
+}
+
+//Registra el resultado de un partido PROGRAMADO
+Partido* registrarResultado(SistemaDeportivo* s, int idPartido, int puntosLocal, int puntosVisitante){
+    Partido* p = buscarPartidoPorID(s, idPartido);
+    if(p == nullptr || strcmp(p->estado, "PROGRAMADO") != 0){//Solo registramos si existe y esta programado
+        return nullptr;
+    }
+
+    Equipo* local = buscarEquipoPorID(s, p->idEquipoLocal);
+    Equipo* visitante = buscarEquipoPorID(s, p->idEquipoVisitante);
+    if(local == nullptr || visitante == nullptr){//Verificamos que los equipos existan
+        return nullptr;
+    }
+
+    p->puntosLocal = puntosLocal;
+    p->puntosVisitante = puntosVisitante;
+    strcpy(p->estado, "JUGADO");//Cambiamos el estado a jugado
+
+    //Actualizamos los puntos a favor y en contra de ambos equipos
+    local->puntosAFavor += puntosLocal;
+    local->puntosEnContra += puntosVisitante;
+    visitante->puntosAFavor += puntosVisitante;
+    visitante->puntosEnContra += puntosLocal;
+
+    if(puntosLocal > puntosVisitante){//Si gano el equipo local
+        local->puntos += 3;
+        local->victorias += 1;
+        visitante->derrotas += 1;
+    }else if(puntosLocal == puntosVisitante){//Si hubo empate en el partido
+        local->puntos += 1;
+        visitante->puntos += 1;
+        local->empates += 1;
+        visitante->empates += 1;
+    }else{//Si gano el equipo visitante
+        visitante->puntos += 3;
+        visitante->victorias += 1;
+        local->derrotas += 1;
+    }
+
+    return p;//Retornamos el partido actualizado
+}
+
+//Retorna array de partidos en los que participo el equipo
+Partido** buscarPartidosPorEquipo(SistemaDeportivo* s, int idEquipo, int* cantidad){
+    *cantidad = 0;//Reiniciamos el contador a 0
+
+    for(int i = 0; i < s->numPartidos; i++){//Contamos en cuantos partidos participo el equipo
+        if(s->partidos[i].idEquipoLocal == idEquipo || s->partidos[i].idEquipoVisitante == idEquipo){
+            *cantidad += 1;
+        }
+    }
+
+    if(*cantidad == 0){
+        return nullptr;//Si no jugo ningun partido retornamos nullptr
+    }
+
+    Partido** busqueda = new Partido*[*cantidad];//Creamos el array dinamico temporal de punteros
+
+    int pos = 0;
+    for(int i = 0; i < s->numPartidos; i++){//Guardamos las direcciones de esos partidos
+        if(s->partidos[i].idEquipoLocal == idEquipo || s->partidos[i].idEquipoVisitante == idEquipo){
+            busqueda[pos] = &(s->partidos[i]);
+            pos++;
+        }
+    }
+
+    return busqueda;
+}
+
+//Retorna array de partidos con ese estado
+Partido** listarPartidosPorEstado(SistemaDeportivo* s, const char* estado, int* cantidad){
+    *cantidad = 0;//Inicializamos la cantidad en 0
+
+    for(int i = 0; i < s->numPartidos; i++){//Contamos los partidos que coincidan con el estado
+        if(strcmp(s->partidos[i].estado, estado) == 0){
+            *cantidad += 1;
+        }
+    }
+
+    if(*cantidad == 0){
+        return nullptr;
+    }
+
+    Partido** lista = new Partido*[*cantidad];//Bandeja temporal con el tamano exacto
+
+    int pos = 0;
+    for(int i = 0; i < s->numPartidos; i++){//Guardamos las direcciones de los partidos filtrados
+        if(strcmp(s->partidos[i].estado, estado) == 0){
+            lista[pos] = &(s->partidos[i]);
+            pos++;
+        }
+    }
+
+    return lista;
+}
+
 int main() {
     
     
