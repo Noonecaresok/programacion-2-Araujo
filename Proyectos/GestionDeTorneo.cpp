@@ -1,6 +1,8 @@
 #include <iostream>
 #include <iomanip>
 #include <cstring> 
+#include <windows.h>
+
 
 using namespace std;
 
@@ -89,16 +91,20 @@ void leerEntero(int &num) {
 }
 
 void leerCadena(char* destino, int maxLongitud) {
-    // Limpia buffers residuales si existen antes de leer texto real
-    if (cin.peek() == '\n') cin.ignore();
-    
-    cin.getline(destino, maxLongitud);
-    
-    // Si el usuario ingreso mas texto del permitido, limpia el exceso
-    if (cin.fail()) {
-        cin.clear();
-        cin.ignore(1000, '\n');
-    }
+    do {
+        if (cin.peek() == '\n') cin.ignore();
+        
+        cin.getline(destino, maxLongitud);
+        
+        if (cin.fail()) {
+            cin.clear();
+            cin.ignore(1000, '\n');
+        }
+        
+        if (strlen(destino) == 0) {
+            cout << "ERROR: El campo no puede estar vacio. Intente de nuevo: ";
+        }
+    } while (strlen(destino) == 0);
 }
 
 
@@ -789,8 +795,252 @@ bool cancelarPartido(SistemaDeportivo* s, int idPartido){
     return true;
 }
 
+
+//Capa de presentacion de equipos
+
+//Muestra los datos de un equipo
+void mostrarEquipo(Equipo* equipo) {
+    cout << "\n--- DATOS DEL EQUIPO ---" << endl;
+    cout << "ID: " << equipo->id << endl;
+    cout << "Nombre: " << equipo->nombre << endl;
+    cout << "Ciudad: " << equipo->city << endl;
+    cout << "Entrenador: " << equipo->entrenador << endl;
+    cout << "Fecha de Registro: " << equipo->fechaRegistro << endl;
+    cout << "------------------------\n" << endl;
+}
+
+//Muestra una lista de equipos en formato tabla 
+void mostrarListaEquipos(Equipo** equipos, int cantidad) {
+    cout << "\n╔════╦══════════════════════════════╦══════════════════════════════╗" << endl;
+    cout << "║ ID ║ NOMBRE DEL EQUIPO            ║ CIUDAD                       ║" << endl;
+    cout << "╠════╬══════════════════════════════╬══════════════════════════════╣" << endl;
+    for (int i = 0; i < cantidad; i++) {
+        cout << "║ " << setw(2) << equipos[i]->id << " ║ " 
+             << left << setw(28) << equipos[i]->nombre << " ║ " 
+             << left << setw(28) << equipos[i]->city << " ║" << right << endl;
+    }
+    cout << "╚════╩══════════════════════════════╩══════════════════════════════╝" << endl;
+    cout << "Total de equipos: " << cantidad << "\n" << endl;
+}
+
+//Llama a la logica de ordenamiento y dibuja la tabla del torneo
+void mostrarTablaPosiciones(SistemaDeportivo* s) {
+    int cantidad = 0;
+    Equipo** tabla = generarTablaPosiciones(s, &cantidad); //Llamamos a la logica
+
+    if (tabla == nullptr || cantidad == 0) {
+        cout << "\nNo hay equipos registrados para mostrar la tabla.\n" << endl;
+        return;
+    }
+
+    cout << "\n╔══════════════════════════════════════════════════════════════════════╗" << endl;
+    cout << "║                      TABLA DE POSICIONES                             ║" << endl;
+    cout << "║                      " << left << setw(40) << s->torneo.nombre << "          ║" << endl;
+    cout << "╠════╦══════════════════╦═════╦═══╦═══╦═══╦════╦════╦════╗" << endl;
+    cout << "║ #  ║ Equipo           ║ PTS ║ J ║ G ║ E ║ D  ║ GF ║ GC ║" << endl;
+    cout << "╠════╬══════════════════╬═════╬═══╬═══╬═══╬════╬════╬════╣" << endl;
+
+    for (int i = 0; i < cantidad; i++) {
+        int jugados = tabla[i]->victorias + tabla[i]->empates + tabla[i]->derrotas;
+        cout << "║ " << setw(2) << (i + 1) << " ║ "
+             << left << setw(16) << tabla[i]->nombre << right << " ║ "
+             << setw(3) << tabla[i]->puntos << " ║ "
+             << setw(1) << jugados << " ║ "
+             << setw(1) << tabla[i]->victorias << " ║ "
+             << setw(1) << tabla[i]->empates << " ║ "
+             << setw(2) << tabla[i]->derrotas << " ║ "
+             << setw(2) << tabla[i]->puntosAFavor << " ║ "
+             << setw(2) << tabla[i]->puntosEnContra << " ║" << endl;
+    }
+    cout << "╚════╩══════════════════╩═════╩═══╩═══╩═══╩════╩════╩════╝\n" << endl;
+
+    delete[] tabla; //Liberamos la bandeja temporal para evitar fugas de memoria
+}
+
+//Menu para registrar un nuevo equipo interactuando con el usuario
+void menuRegistrarEquipo(SistemaDeportivo* s) {
+    char nombre[100], ciudad[100], entrenador[100];
+    
+    cout << "\n--- REGISTRAR NUEVO EQUIPO ---" << endl;
+    cout << "Ingrese el nombre del equipo: ";
+    leerCadena(nombre, 100);
+    cout << "Ingrese la ciudad: ";
+    leerCadena(ciudad, 100);
+    cout << "Ingrese el nombre del entrenador: ";
+    leerCadena(entrenador, 100);
+
+    char confirmacion;
+    cout << "\n¿Desea guardar este equipo? (S/N): ";
+    cin >> confirmacion;
+    if (toupper(confirmacion) != 'S') {
+        cout << "Registro cancelado por el usuario.\n" << endl;
+        return;
+    }
+
+    Equipo* nuevo = agregarEquipo(s, nombre, ciudad, entrenador);
+    
+    if (nuevo == nullptr) {
+        cout << "ERROR: Ya existe un equipo con el nombre '" << nombre << "'.\n" << endl;
+    } else {
+        cout << "\n¡Equipo registrado exitosamente!" << endl;
+        mostrarEquipo(nuevo);
+    }
+}
+
+//Menu para buscar un equipo por subcadena
+void menuBuscarEquipo(SistemaDeportivo* s) {
+    char busqueda[100];
+    cout << "\n--- BUSCAR EQUIPO ---" << endl;
+    cout << "Ingrese el nombre o parte del nombre a buscar: ";
+    leerCadena(busqueda, 100);
+
+    int cantidad = 0;
+    Equipo** resultados = buscarEquiposPorNombre(s, busqueda, &cantidad);
+
+    if (resultados == nullptr || cantidad == 0) {
+        cout << "No se encontraron equipos que coincidan con '" << busqueda << "'.\n" << endl;
+    } else {
+        cout << "\nResultados de la busqueda:" << endl;
+        mostrarListaEquipos(resultados, cantidad);
+        delete[] resultados; // Liberamos la bandeja temporal
+    }
+}
+
+//Menu para actualizar datos basicos
+void menuActualizarEquipo(SistemaDeportivo* s) {
+    int id;
+    cout << "\n--- ACTUALIZAR EQUIPO ---" << endl;
+    cout << "Ingrese el ID del equipo a actualizar: ";
+    leerEntero(id);
+
+    Equipo* actual = buscarEquipoPorID(s, id);
+    if (actual == nullptr) {
+        cout << "ERROR: No existe ningun equipo con ID " << id << ".\n" << endl;
+        return;
+    }
+
+    mostrarEquipo(actual);
+
+    Equipo datosNuevos;
+    cout << "\nIngrese el nuevo nombre: ";
+    leerCadena(datosNuevos.nombre, 100);
+    cout << "Ingrese la nueva ciudad: ";
+    leerCadena(datosNuevos.city, 100);
+    cout << "Ingrese el nuevo entrenador: ";
+    leerCadena(datosNuevos.entrenador, 100);
+
+    char confirmacion;
+    cout << "\n¿Desea guardar los cambios? (S/N): ";
+    cin >> confirmacion;
+    
+    if (toupper(confirmacion) == 'S') {
+        if (actualizarEquipo(s, id, datosNuevos)) {
+            cout << "Equipo actualizado exitosamente.\n" << endl;
+        }
+    } else {
+        cout << "Actualizacion cancelada.\n" << endl;
+    }
+}
+
+//Menu para eliminar un equipo
+void menuEliminarEquipo(SistemaDeportivo* s) {
+    int id;
+    cout << "\n--- ELIMINAR EQUIPO ---" << endl;
+    cout << "Ingrese el ID del equipo a eliminar: ";
+    leerEntero(id);
+
+    Equipo* actual = buscarEquipoPorID(s, id);
+    if (actual == nullptr) {
+        cout << "ERROR: No existe ningun equipo con ID " << id << ".\n" << endl;
+        return;
+    }
+
+    mostrarEquipo(actual);
+
+    char confirmacion;
+    cout << "\nADVERTENCIA: ¿Esta seguro que desea eliminar este equipo? (S/N): ";
+    cin >> confirmacion;
+
+    if (toupper(confirmacion) == 'S') {
+        if (eliminarEquipo(s, id)) {
+            cout << "Equipo eliminado exitosamente del sistema.\n" << endl;
+        } else {
+            cout << "ERROR: No se puede eliminar el equipo porque tiene partidos asociados.\n" << endl;
+        }
+    } else {
+        cout << "Eliminacion cancelada.\n" << endl;
+    }
+}
+
+//Menu general para listar todos los equipos
+void menuListarEquipos(SistemaDeportivo* s) {
+    int cantidad = 0;
+    Equipo** todos = listarEquipos(s, &cantidad);
+    
+    if (todos == nullptr) {
+        cout << "\nNo hay equipos registrados en el sistema.\n" << endl;
+    } else {
+        cout << "\n--- LISTADO GENERAL DE EQUIPOS ---" << endl;
+        mostrarListaEquipos(todos, cantidad);
+        delete[] todos; //Liberamos la bandeja
+    }
+}
+
+
 int main() {
+    SetConsoleOutputCP(CP_UTF8);
+
+
+    SistemaDeportivo sistema;
+    Torneo torneo = {"Liga Apertura 2026", "Futbol", "GRUPOS", "2026-06-08", "2026-12-15"};
     
+    cout << "Inicializando sistema..." << endl;
+    inicializarSistema(&sistema, torneo);
+
     
+    cout << "\nRegistrando equipos de prueba..." << endl;
+    agregarEquipo(&sistema, "Deportivo Maracaibo", "Maracaibo", "Juan Perez");
+    agregarEquipo(&sistema, "Caracas FC", "Caracas", "Luis Gomez");
+    agregarEquipo(&sistema, "Lara SC", "Barquisimeto", "Pedro Ramirez");
+
+    
+    cout << "\nProbando mostrarListaEquipos..." << endl;
+    int cantidadEquipos = 0;
+    Equipo** listaPrueba = listarEquipos(&sistema, &cantidadEquipos);
+    if(listaPrueba != nullptr){
+        mostrarListaEquipos(listaPrueba, cantidadEquipos);
+        delete[] listaPrueba; // Limpiamos la bandeja
+    }
+
+    
+    cout << "\nSimulando partidos y probando generarTablaPosiciones..." << endl;
+    //Deportivo Maracaibo (6 pts, +3 dif)
+    sistema.equipos[0].puntos = 6; 
+    sistema.equipos[0].victorias = 2;
+    sistema.equipos[0].puntosAFavor = 5; 
+    sistema.equipos[0].puntosEnContra = 2;
+
+    //Caracas FC (3 pts, 0 dif)
+    sistema.equipos[1].puntos = 3; 
+    sistema.equipos[1].victorias = 1;
+    sistema.equipos[1].derrotas = 1;
+    sistema.equipos[1].puntosAFavor = 3; 
+    sistema.equipos[1].puntosEnContra = 3;
+
+    //Lara SC (1 pt, -3 dif)
+    sistema.equipos[2].puntos = 1; 
+    sistema.equipos[2].empates = 1;
+    sistema.equipos[2].derrotas = 1;
+    sistema.equipos[2].puntosAFavor = 2; 
+    sistema.equipos[2].puntosEnContra = 5;
+
+    //Dibujamos la tabla ordenada
+    mostrarTablaPosiciones(&sistema);
+
+  
+    cout << "\nLiberando memoria del sistema..." << endl;
+    liberarSistema(&sistema);
+    cout << "Memoria liberada." << endl;
+
     return 0;
 }
