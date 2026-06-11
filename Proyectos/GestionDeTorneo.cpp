@@ -734,6 +734,61 @@ Partido** listarPartidosPorEstado(SistemaDeportivo* s, const char* estado, int* 
     return lista;
 }
 
+//Retorna array con todos los partidos
+Partido** listarPartidos(SistemaDeportivo* s, int* cantidad){
+    if(s->numPartidos == 0){//Si no hay partidos registrados retornamos nullptr
+        return nullptr;
+    }
+
+    *cantidad = s->numPartidos;
+    Partido** lista = new Partido*[*cantidad];//Array dinamico de punteros para la lista completa
+
+    for(int i = 0; i < s->numPartidos; i++){
+        lista[i] = &(s->partidos[i]);//Copiamos la direccion de memoria de cada partido
+    }
+
+    return lista;
+}
+
+//Cancela un partido y revierte las estadisticas si ya fue jugado
+bool cancelarPartido(SistemaDeportivo* s, int idPartido){
+    Partido* p = buscarPartidoPorID(s, idPartido);
+    if(p == nullptr || strcmp(p->estado, "CANCELADO") == 0){//Si no existe o ya esta cancelado, salimos
+        return false;
+    }
+
+    if(strcmp(p->estado, "JUGADO") == 0){//Si el partido ya se jugo, hay que revertir las estadisticas
+        Equipo* local = buscarEquipoPorID(s, p->idEquipoLocal);
+        Equipo* visitante = buscarEquipoPorID(s, p->idEquipoVisitante);
+
+        if(local != nullptr && visitante != nullptr){
+            //Restamos los puntos anotados a favor y en contra de ambos
+            local->puntosAFavor -= p->puntosLocal;
+            local->puntosEnContra -= p->puntosVisitante;
+            visitante->puntosAFavor -= p->puntosVisitante;
+            visitante->puntosEnContra -= p->puntosLocal;
+
+            if(p->puntosLocal > p->puntosVisitante){//Revertimos la victoria local
+                local->puntos -= 3;
+                local->victorias -= 1;
+                visitante->derrotas -= 1;
+            }else if(p->puntosLocal == p->puntosVisitante){//Revertimos el empate
+                local->puntos -= 1;
+                visitante->puntos -= 1;
+                local->empates -= 1;
+                visitante->empates -= 1;
+            }else{//Revertimos la victoria visitante
+                visitante->puntos -= 3;
+                visitante->victorias -= 1;
+                local->derrotas -= 1;
+            }
+        }
+    }
+
+    strcpy(p->estado, "CANCELADO");//Cambiamos finalmente el estado a cancelado
+    return true;
+}
+
 int main() {
     
     
