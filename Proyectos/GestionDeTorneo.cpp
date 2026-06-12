@@ -107,6 +107,16 @@ void leerCadena(char* destino, int maxLongitud) {
     } while (strlen(destino) == 0);
 }
 
+bool validarFechaFormato(const char* fecha) {
+    if (strlen(fecha) != 10) return false;
+    if (fecha[4] != '-' || fecha[7] != '-') return false;
+    for (int i = 0; i < 10; i++) {
+        if (i == 4 || i == 7) continue;
+        if (fecha[i] < '0' || fecha[i] > '9') return false;
+    }
+    return true;
+}
+
 
 //Funciones del proyecto
 
@@ -1046,7 +1056,7 @@ void menuRegistrarJugador(SistemaDeportivo* s) {
     leerEntero(idEquipo);
     
     Equipo* eq = buscarEquipoPorID(s, idEquipo);
-    if(eq == nullptr){//Si el id no pertenece a un equipo abortamos
+    if(eq == nullptr){
         cout << "ERROR: No existe ningun equipo con ID " << idEquipo << ".\n" << endl;
         return;
     }
@@ -1055,17 +1065,28 @@ void menuRegistrarJugador(SistemaDeportivo* s) {
 
     cout << "Ingrese el nombre del jugador: ";
     leerCadena(nombre, 100);
-    if(strcmp(nombre, "CANCELAR") == 0) { cout << "Registro cancelado.\n"; return; }//Si el usuario escribe CANCELAR, abortamos
+    if(strcmp(nombre, "CANCELAR") == 0) { cout << "Registro cancelado.\n"; return; }
 
     cout << "Ingrese la cedula: ";
     leerCadena(cedula, 20);
     if(strcmp(cedula, "CANCELAR") == 0) { cout << "Registro cancelado.\n"; return; }
 
+    
+    for(int i = 0; i < s->numJugadores; i++){
+        if(strcmp(s->jugadores[i].cedula, cedula) == 0){
+            cout << "ERROR: La cedula '" << cedula << "' ya esta registrada.\n" << endl;
+            return;
+        }
+        if(s->jugadores[i].idEquipo == idEquipo && s->jugadores[i].numeroDorsal == dorsal){
+            cout << "ERROR: El dorsal " << dorsal << " ya esta en uso en el equipo '" << eq->nombre << "'.\n" << endl;
+            return;
+        }
+    }
+
     cout << "Ingrese la posicion (PORTERO, DEFENSA, MEDIOCAMPISTA, DELANTERO): ";
     leerCadena(posicion, 20);
     if(strcmp(posicion, "CANCELAR") == 0) { cout << "Registro cancelado.\n"; return; }
     
-    //Validamos que la posicion sea estrictamente una de las permitidas
     if(strcmp(posicion, "PORTERO") != 0 && strcmp(posicion, "DEFENSA") != 0 && 
        strcmp(posicion, "MEDIOCAMPISTA") != 0 && strcmp(posicion, "DELANTERO") != 0) {
         cout << "ERROR: Posicion invalida.\n" << endl;
@@ -1074,14 +1095,14 @@ void menuRegistrarJugador(SistemaDeportivo* s) {
 
     cout << "Ingrese la edad (14 - 50): ";
     leerEntero(edad);
-    if(edad < 14 || edad > 50){//Validamos rango de edad
+    if(edad < 14 || edad > 50){
         cout << "ERROR: La edad debe estar entre 14 y 50 años.\n" << endl;
         return;
     }
 
     cout << "Ingrese el numero dorsal (1 - 99): ";
     leerEntero(dorsal);
-    if(dorsal < 1 || dorsal > 99){//Validamos rango de dorsal
+    if(dorsal < 1 || dorsal > 99){
         cout << "ERROR: El dorsal debe estar entre 1 y 99.\n" << endl;
         return;
     }
@@ -1095,10 +1116,7 @@ void menuRegistrarJugador(SistemaDeportivo* s) {
     }
 
     Jugador* nuevo = agregarJugador(s, idEquipo, nombre, cedula, posicion, edad, dorsal);
-    
-    if (nuevo == nullptr) {//Si retorna nullptr es porque fallo la validacion de logica
-        cout << "ERROR: La cedula ya existe o el dorsal esta repetido en ese equipo.\n" << endl;
-    } else {
+    if (nuevo != nullptr) {
         cout << "\n¡Jugador registrado exitosamente!" << endl;
         mostrarJugador(nuevo, s);
     }
@@ -1207,61 +1225,354 @@ void menuEliminarJugador(SistemaDeportivo* s) {
     }
 }
 
+//Muestra los detalles de un partido, buscando los nombres de los equipos locales y visitantes
+void mostrarPartido(Partido* partido, SistemaDeportivo* s) {
+    Equipo* local = buscarEquipoPorID(s, partido->idEquipoLocal);
+    Equipo* visitante = buscarEquipoPorID(s, partido->idEquipoVisitante);
+    
+    char nomLocal[100] = "Desconocido";
+    char nomVisitante[100] = "Desconocido";
+    
+    if (local != nullptr) strcpy(nomLocal, local->nombre);
+    if (visitante != nullptr) strcpy(nomVisitante, visitante->nombre);
+
+    cout << "\n╔══════════════════════════════════════════════════╗" << endl;
+    cout << "║              DETALLE DE PARTIDO                  ║" << endl;
+    cout << "╠══════════════════════════════════════════════════╣" << endl;
+    cout << "║ ID Partido  : " << left << setw(35) << partido->id << "║" << endl;
+    cout << "║ Estado      : " << left << setw(35) << partido->estado << "║" << endl;
+    cout << "║ Fecha       : " << left << setw(35) << partido->fecha << "║" << endl;
+    cout << "║                                                  ║" << endl;
+    
+    //Centramos el marcador en la consola
+    cout << "║ " << right << setw(18) << nomLocal << "  " 
+         << partido->puntosLocal << " - " << partido->puntosVisitante << "  " 
+         << left << setw(18) << nomVisitante << " ║" << endl;
+         
+    cout << "║      (Local)                  (Visitante)        ║" << endl;
+    cout << "║                                                  ║" << endl;
+    cout << "║ Notas: " << left << setw(42) << partido->descripcion << "║" << endl;
+    cout << "╚══════════════════════════════════════════════════╝\n" << endl;
+}
+
+//Muestra una lista iterando sobre un array de punteros a partidos
+void mostrarListaPartidos(Partido** partidos, int cantidad, SistemaDeportivo* s) {
+    cout << "\n--- LISTADO DE PARTIDOS ---" << endl;
+    for (int i = 0; i < cantidad; i++) {
+        mostrarPartido(partidos[i], s);
+    }
+    cout << "Total de partidos mostrados: " << cantidad << "\n" << endl;
+}
+
+//Menu para programar un partido nuevo entre dos equipos
+void menuProgramarPartido(SistemaDeportivo* s) {
+    int idLocal, idVisitante;
+    char fecha[11], descripcion[200];
+
+    cout << "\n--- PROGRAMAR PARTIDO ---" << endl;
+    cout << "Ingrese el ID del Equipo Local: ";
+    leerEntero(idLocal);
+    cout << "Ingrese el ID del Equipo Visitante: ";
+    leerEntero(idVisitante);
+
+    if (idLocal == idVisitante) {
+        cout << "ERROR: No se puede programar un partido de un equipo contra si mismo.\n" << endl;
+        return;
+    }
+
+    cout << "Ingrese la fecha (YYYY-MM-DD): ";
+    leerCadena(fecha, 11);
+    if (!validarFechaFormato(fecha)) {
+        cout << "ERROR: Formato de fecha invalido. Debe ser YYYY-MM-DD.\n" << endl;
+        return;
+    }
+
+    cout << "Ingrese una nota o descripcion (opcional): ";
+    leerCadena(descripcion, 200);
+
+    char confirmacion;
+    cout << "\n¿Desea guardar y programar este partido? (S/N): ";
+    cin >> confirmacion;
+    if (toupper(confirmacion) != 'S') {
+        cout << "Programacion cancelada por el usuario.\n" << endl;
+        return;
+    }
+
+    Partido* p = programarPartido(s, idLocal, idVisitante, fecha, descripcion);
+
+    if (p == nullptr) {
+        cout << "ERROR: Equipos invalidos o ya tienen un partido PROGRAMADO.\n" << endl;
+    } else {
+        cout << "\n¡Partido programado con exito!" << endl;
+        mostrarPartido(p, s);
+    }
+}
+
+//Menu para asigarle un resultado a un partido que estaba programado
+void menuRegistrarResultado(SistemaDeportivo* s) {
+    int idPartido, golesLocal, golesVisitante;
+    
+    cout << "\n--- REGISTRAR RESULTADO ---" << endl;
+    cout << "Ingrese el ID del Partido: ";
+    leerEntero(idPartido);
+
+    Partido* actual = buscarPartidoPorID(s, idPartido);
+    if (actual == nullptr) {
+        cout << "ERROR: No existe el partido con ID " << idPartido << ".\n" << endl;
+        return;
+    }
+
+    if (strcmp(actual->estado, "PROGRAMADO") != 0) {
+        cout << "ERROR: El partido ID " << idPartido << " ya tiene resultado registrado o esta cancelado.\n" << endl;
+        return;
+    }
+
+    mostrarPartido(actual, s);
+
+    cout << "Ingrese goles del Equipo Local: ";
+    leerEntero(golesLocal);
+    cout << "Ingrese goles del Equipo Visitante: ";
+    leerEntero(golesVisitante);
+
+    if (golesLocal < 0 || golesVisitante < 0) {
+        cout << "ERROR: Los puntos/goles deben ser mayores o iguales a 0.\n" << endl;
+        return;
+    }
+
+    char confirmacion;
+    cout << "\n¿Desea registrar este resultado de forma definitiva? (S/N): ";
+    cin >> confirmacion;
+    if (toupper(confirmacion) != 'S') {
+        cout << "Registro de resultado cancelado.\n" << endl;
+        return;
+    }
+
+    Partido* p = registrarResultado(s, idPartido, golesLocal, golesVisitante);
+
+    if (p != nullptr) {
+        cout << "\n¡Resultado registrado y estadisticas actualizadas!" << endl;
+        mostrarPartido(p, s);
+    }
+}
+
+//Menu para buscar un partido especifico por su ID
+void menuBuscarPartido(SistemaDeportivo* s) {
+    int idPartido;
+    cout << "\n--- BUSCAR PARTIDO ---" << endl;
+    cout << "Ingrese el ID del Partido: ";
+    leerEntero(idPartido);
+
+    Partido* p = buscarPartidoPorID(s, idPartido);
+    if (p == nullptr) {
+        cout << "No se encontro partido con ID " << idPartido << ".\n" << endl;
+    } else {
+        mostrarPartido(p, s);
+    }
+}
+
+//Menu general para mostrar todos los partidos del sistema
+void menuListarPartidos(SistemaDeportivo* s) {
+    int cantidad = 0;
+    Partido** todos = listarPartidos(s, &cantidad);
+
+    if (todos == nullptr) {
+        cout << "\nNo hay partidos registrados en el sistema.\n" << endl;
+    } else {
+        mostrarListaPartidos(todos, cantidad, s);
+        delete[] todos; //Liberamos la bandeja temporal
+    }
+}
+
+//Menu para cancelar un partido y revertir los puntos si es necesario
+void menuCancelarPartido(SistemaDeportivo* s) {
+    int idPartido;
+    cout << "\n--- CANCELAR PARTIDO ---" << endl;
+    cout << "Ingrese el ID del Partido a cancelar: ";
+    leerEntero(idPartido);
+
+    Partido* p = buscarPartidoPorID(s, idPartido);
+    if (p == nullptr) {
+        cout << "ERROR: No existe el partido con ID " << idPartido << ".\n" << endl;
+        return;
+    }
+
+    mostrarPartido(p, s);
+
+    char confirmacion;
+    cout << "\nADVERTENCIA: ¿Seguro que desea CANCELAR este partido? Si ya fue jugado, se revertiran los puntos. (S/N): ";
+    cin >> confirmacion;
+
+    if (toupper(confirmacion) == 'S') {
+        if (cancelarPartido(s, idPartido)) {
+            cout << "Partido cancelado y estadisticas revertidas con exito.\n" << endl;
+        } else {
+            cout << "ERROR: El partido ya estaba cancelado.\n" << endl;
+        }
+    } else {
+        cout << "Operacion abortada.\n" << endl;
+    }
+}
+
+//Submenu para gestionar la capa de equipos
+void subMenuEquipos(SistemaDeportivo* s) {
+    int opcion;
+    do {
+        cout << "\n╔═══════════════════════════════════════════╗" << endl;
+        cout << "║          GESTION DE EQUIPOS               ║" << endl;
+        cout << "╠═══════════════════════════════════════════╣" << endl;
+        cout << "║  1. Registrar equipo                      ║" << endl;
+        cout << "║  2. Buscar equipo                         ║" << endl;
+        cout << "║  3. Actualizar equipo                     ║" << endl;
+        cout << "║  4. Listar equipos                        ║" << endl;
+        cout << "║  5. Eliminar equipo                       ║" << endl;
+        cout << "║  0. Volver al menu principal              ║" << endl;
+        cout << "╚═══════════════════════════════════════════╝" << endl;
+        cout << "Seleccione una opcion: ";
+        leerEntero(opcion);
+
+        switch (opcion) {
+            case 1: menuRegistrarEquipo(s); break;
+            case 2: menuBuscarEquipo(s); break;
+            case 3: menuActualizarEquipo(s); break;
+            case 4: menuListarEquipos(s); break;
+            case 5: menuEliminarEquipo(s); break;
+            case 0: break;
+            default: cout << "Opcion invalida.\n";
+        }
+    } while (opcion != 0);
+}
+
+//Submenu para gestionar la capa de jugadores
+void subMenuJugadores(SistemaDeportivo* s) {
+    int opcion;
+    do {
+        cout << "\n╔═══════════════════════════════════════════╗" << endl;
+        cout << "║        GESTION DE JUGADORES               ║" << endl;
+        cout << "╠═══════════════════════════════════════════╣" << endl;
+        cout << "║  1. Registrar jugador                     ║" << endl;
+        cout << "║  2. Buscar jugador                        ║" << endl;
+        cout << "║  3. Actualizar jugador                    ║" << endl;
+        cout << "║  4. Listar jugadores (todos)              ║" << endl;
+        cout << "║  5. Listar jugadores por equipo           ║" << endl;
+        cout << "║  6. Eliminar jugador                      ║" << endl;
+        cout << "║  0. Volver al menu principal              ║" << endl;
+        cout << "╚═══════════════════════════════════════════╝" << endl;
+        cout << "Seleccione una opcion: ";
+        leerEntero(opcion);
+
+        switch (opcion) {
+            case 1: menuRegistrarJugador(s); break;
+            case 2: menuBuscarJugador(s); break;
+            case 3: menuActualizarJugador(s); break;
+            case 4: menuListarJugadores(s); break;
+            case 5: {
+                int idEq;
+                cout << "Ingrese el ID del Equipo: ";
+                leerEntero(idEq);
+                int cant = 0;
+                Jugador** lista = listarJugadoresPorEquipo(s, idEq, &cant);
+                if(lista != nullptr) {
+                    mostrarListaJugadores(lista, cant, s);
+                    delete[] lista;//Liberamos la bandeja temporal
+                } else {
+                    cout << "No hay jugadores registrados en ese equipo.\n";
+                }
+                break;
+            }
+            case 6: menuEliminarJugador(s); break;
+            case 0: break;
+            default: cout << "Opcion invalida.\n";
+        }
+    } while (opcion != 0);
+}
+
+//Submenu para gestionar la capa de partidos
+void subMenuPartidos(SistemaDeportivo* s) {
+    int opcion;
+    do {
+        cout << "\n╔═══════════════════════════════════════════╗" << endl;
+        cout << "║        GESTION DE PARTIDOS                ║" << endl;
+        cout << "╠═══════════════════════════════════════════╣" << endl;
+        cout << "║  1. Programar partido                     ║" << endl;
+        cout << "║  2. Registrar resultado                   ║" << endl;
+        cout << "║  3. Buscar partido                        ║" << endl;
+        cout << "║  4. Listar partidos                       ║" << endl;
+        cout << "║  5. Cancelar partido                      ║" << endl;
+        cout << "║  0. Volver al menu principal              ║" << endl;
+        cout << "╚═══════════════════════════════════════════╝" << endl;
+        cout << "Seleccione una opcion: ";
+        leerEntero(opcion);
+
+        switch (opcion) {
+            case 1: menuProgramarPartido(s); break;
+            case 2: menuRegistrarResultado(s); break;
+            case 3: menuBuscarPartido(s); break;
+            case 4: menuListarPartidos(s); break;
+            case 5: menuCancelarPartido(s); break;
+            case 0: break;
+            default: cout << "Opcion invalida.\n";
+        }
+    } while (opcion != 0);
+}
+
+
 
 int main() {
     SetConsoleOutputCP(CP_UTF8);
 
-
     SistemaDeportivo sistema;
     Torneo torneo = {"Liga Apertura 2026", "Futbol", "GRUPOS", "2026-06-08", "2026-12-15"};
     
-    cout << "Inicializando sistema..." << endl;
     inicializarSistema(&sistema, torneo);
 
-    
-    cout << "\nRegistrando equipos de prueba..." << endl;
-    agregarEquipo(&sistema, "Deportivo Maracaibo", "Maracaibo", "Juan Perez");
-    agregarEquipo(&sistema, "Caracas FC", "Caracas", "Luis Gomez");
-    agregarEquipo(&sistema, "Lara SC", "Barquisimeto", "Pedro Ramirez");
+    int opcion;
+    do {
+        cout << "\n╔═══════════════════════════════════════════╗" << endl;
+        cout << "║    SISTEMA DE GESTION DE TORNEOS          ║" << endl;
+        cout << "║    Torneo: " << left << setw(30) << sistema.torneo.nombre << " ║" << endl;
+        cout << "║    Deporte: " << left << setw(10) << sistema.torneo.deporte << " | Formato: " << left << setw(8) << sistema.torneo.formato << " ║" << endl;
+        cout << "╠═══════════════════════════════════════════╣" << endl;
+        cout << "║  1. Gestion de Equipos                    ║" << endl;
+        cout << "║  2. Gestion de Jugadores                  ║" << endl;
+        cout << "║  3. Gestion de Partidos                   ║" << endl;
+        cout << "║  4. Tabla de Posiciones                   ║" << endl;
+        cout << "║  0. Salir                                 ║" << endl;
+        cout << "╚═══════════════════════════════════════════╝" << endl;
+        cout << "Seleccione una opcion: ";
+        leerEntero(opcion);
 
-    
-    cout << "\nProbando mostrarListaEquipos..." << endl;
-    int cantidadEquipos = 0;
-    Equipo** listaPrueba = listarEquipos(&sistema, &cantidadEquipos);
-    if(listaPrueba != nullptr){
-        mostrarListaEquipos(listaPrueba, cantidadEquipos);
-        delete[] listaPrueba; // Limpiamos la bandeja
-    }
+        switch (opcion) {
+            case 1:
+                subMenuEquipos(&sistema);
+                break;
+            case 2:
+                subMenuJugadores(&sistema);
+                break;
+            case 3:
+                subMenuPartidos(&sistema);
+                break;
+            case 4:
+                mostrarTablaPosiciones(&sistema);
+                break;
+            case 0: {
+                char confSalir;
+                cout << "\n¿Esta seguro que desea salir del programa? (S/N): ";
+                cin >> confSalir;
+                if (toupper(confSalir) == 'S') {
+                    cout << "\nGuardando y saliendo del sistema. ¡Hasta luego!\n" << endl;
+                } else {
+                    opcion = -1; //Le cambiamos el valor para que el while no se rompa y el programa siga
+                    cout << "Salida cancelada.\n" << endl;
+                }
+                break;
+            }
+            default:
+                cout << "Opcion invalida. Intente de nuevo.\n" << endl;
+        }
+    } while (opcion != 0);
 
-    
-    cout << "\nSimulando partidos y probando generarTablaPosiciones..." << endl;
-    //Deportivo Maracaibo (6 pts, +3 dif)
-    sistema.equipos[0].puntos = 6; 
-    sistema.equipos[0].victorias = 2;
-    sistema.equipos[0].puntosAFavor = 5; 
-    sistema.equipos[0].puntosEnContra = 2;
-
-    //Caracas FC (3 pts, 0 dif)
-    sistema.equipos[1].puntos = 3; 
-    sistema.equipos[1].victorias = 1;
-    sistema.equipos[1].derrotas = 1;
-    sistema.equipos[1].puntosAFavor = 3; 
-    sistema.equipos[1].puntosEnContra = 3;
-
-    //Lara SC (1 pt, -3 dif)
-    sistema.equipos[2].puntos = 1; 
-    sistema.equipos[2].empates = 1;
-    sistema.equipos[2].derrotas = 1;
-    sistema.equipos[2].puntosAFavor = 2; 
-    sistema.equipos[2].puntosEnContra = 5;
-
-    //Dibujamos la tabla ordenada
-    mostrarTablaPosiciones(&sistema);
-
-  
-    cout << "\nLiberando memoria del sistema..." << endl;
+    //Limpiamos toda la memoria dinamica antes de cerrar el programa
     liberarSistema(&sistema);
-    cout << "Memoria liberada." << endl;
 
     return 0;
 }
