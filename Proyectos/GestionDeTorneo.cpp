@@ -986,6 +986,227 @@ void menuListarEquipos(SistemaDeportivo* s) {
     }
 }
 
+//Muestra los datos de un solo jugador y busca el nombre de su equipo
+void mostrarJugador(Jugador* jugador, SistemaDeportivo* s) {
+    cout << "\n--- DATOS DEL JUGADOR ---" << endl;
+    cout << "ID: " << jugador->id << endl;
+    cout << "Nombre: " << jugador->nombre << endl;
+    cout << "Cedula: " << jugador->cedula << endl;
+    cout << "Posicion: " << jugador->posicion << endl;
+    cout << "Edad: " << jugador->edad << " años" << endl;
+    cout << "Dorsal: " << jugador->numeroDorsal << endl;
+    
+    Equipo* eq = buscarEquipoPorID(s, jugador->idEquipo);
+    if(eq != nullptr) {//Si el equipo existe mostramos su nombre
+        cout << "Equipo: " << eq->nombre << " (ID: " << eq->id << ")" << endl;
+    } else {//Si no existe marcamos como no encontrado
+        cout << "Equipo: [No encontrado]" << endl;
+    }
+    
+    cout << "Fecha de Registro: " << jugador->fechaRegistro << endl;
+    cout << "-------------------------\n" << endl;
+}
+
+//Muestra una lista de jugadores en formato de tabla
+void mostrarListaJugadores(Jugador** jugadores, int cantidad, SistemaDeportivo* s) {
+    cout << "\n╔═══════════════════════════════════════════════════════════════════════╗" << endl;
+    cout << "║                      LISTADO DE JUGADORES                             ║" << endl;
+    cout << "╠════╦══════════════════╦══════════════╦═══════════════╦═════╦═════════╣" << endl;
+    cout << "║ ID ║ Nombre           ║ Equipo       ║ Posición      ║ Edad║ Dorsal  ║" << endl;
+    cout << "╠════╬══════════════════╬══════════════╬═══════════════╬═════╬═════════╣" << endl;
+    
+    for (int i = 0; i < cantidad; i++) {
+        Equipo* eq = buscarEquipoPorID(s, jugadores[i]->idEquipo);
+        char nombreEquipo[15] = "Desconocido";
+        if(eq != nullptr){//Acortamos el nombre del equipo por si es muy largo para la tabla
+            strncpy(nombreEquipo, eq->nombre, 14);
+            nombreEquipo[14] = '\0';
+        }
+
+        cout << "║ " << setw(2) << jugadores[i]->id << " ║ "
+             << left << setw(16) << jugadores[i]->nombre << right << " ║ "
+             << left << setw(12) << nombreEquipo << right << " ║ "
+             << left << setw(13) << jugadores[i]->posicion << right << " ║ "
+             << setw(3) << jugadores[i]->edad << " ║ "
+             << setw(7) << jugadores[i]->numeroDorsal << " ║" << endl;
+    }
+    cout << "╚════╩══════════════════╩══════════════╩═══════════════╩═════╩═════════╝" << endl;
+    cout << "Total de jugadores: " << cantidad << "\n" << endl;
+}
+
+//Menu interactivo para registrar un jugador, permite cancelar en cualquier string
+void menuRegistrarJugador(SistemaDeportivo* s) {
+    int idEquipo, edad, dorsal;
+    char nombre[100], cedula[20], posicion[20];
+    
+    cout << "\n--- REGISTRAR NUEVO JUGADOR ---" << endl;
+    cout << "(NOTA: Puede escribir 'CANCELAR' en los campos de texto para abortar)\n" << endl;
+    
+    cout << "Ingrese el ID del Equipo al que pertenece: ";
+    leerEntero(idEquipo);
+    
+    Equipo* eq = buscarEquipoPorID(s, idEquipo);
+    if(eq == nullptr){//Si el id no pertenece a un equipo abortamos
+        cout << "ERROR: No existe ningun equipo con ID " << idEquipo << ".\n" << endl;
+        return;
+    }
+
+    cout << "Equipo seleccionado: " << eq->nombre << "\n" << endl;
+
+    cout << "Ingrese el nombre del jugador: ";
+    leerCadena(nombre, 100);
+    if(strcmp(nombre, "CANCELAR") == 0) { cout << "Registro cancelado.\n"; return; }//Si el usuario escribe CANCELAR, abortamos
+
+    cout << "Ingrese la cedula: ";
+    leerCadena(cedula, 20);
+    if(strcmp(cedula, "CANCELAR") == 0) { cout << "Registro cancelado.\n"; return; }
+
+    cout << "Ingrese la posicion (PORTERO, DEFENSA, MEDIOCAMPISTA, DELANTERO): ";
+    leerCadena(posicion, 20);
+    if(strcmp(posicion, "CANCELAR") == 0) { cout << "Registro cancelado.\n"; return; }
+    
+    //Validamos que la posicion sea estrictamente una de las permitidas
+    if(strcmp(posicion, "PORTERO") != 0 && strcmp(posicion, "DEFENSA") != 0 && 
+       strcmp(posicion, "MEDIOCAMPISTA") != 0 && strcmp(posicion, "DELANTERO") != 0) {
+        cout << "ERROR: Posicion invalida.\n" << endl;
+        return;
+    }
+
+    cout << "Ingrese la edad (14 - 50): ";
+    leerEntero(edad);
+    if(edad < 14 || edad > 50){//Validamos rango de edad
+        cout << "ERROR: La edad debe estar entre 14 y 50 años.\n" << endl;
+        return;
+    }
+
+    cout << "Ingrese el numero dorsal (1 - 99): ";
+    leerEntero(dorsal);
+    if(dorsal < 1 || dorsal > 99){//Validamos rango de dorsal
+        cout << "ERROR: El dorsal debe estar entre 1 y 99.\n" << endl;
+        return;
+    }
+
+    char confirmacion;
+    cout << "\n¿Desea guardar este jugador? (S/N): ";
+    cin >> confirmacion;
+    if (toupper(confirmacion) != 'S') {
+        cout << "Registro cancelado por el usuario.\n" << endl;
+        return;
+    }
+
+    Jugador* nuevo = agregarJugador(s, idEquipo, nombre, cedula, posicion, edad, dorsal);
+    
+    if (nuevo == nullptr) {//Si retorna nullptr es porque fallo la validacion de logica
+        cout << "ERROR: La cedula ya existe o el dorsal esta repetido en ese equipo.\n" << endl;
+    } else {
+        cout << "\n¡Jugador registrado exitosamente!" << endl;
+        mostrarJugador(nuevo, s);
+    }
+}
+
+//Menu para buscar jugador por subcadena
+void menuBuscarJugador(SistemaDeportivo* s) {
+    char busqueda[100];
+    cout << "\n--- BUSCAR JUGADOR ---" << endl;
+    cout << "Ingrese el nombre o parte del nombre a buscar: ";
+    leerCadena(busqueda, 100);
+
+    int cantidad = 0;
+    Jugador** resultados = buscarJugadoresPorNombre(s, busqueda, &cantidad);
+
+    if (resultados == nullptr || cantidad == 0) {//Si no hay resultados
+        cout << "No se encontraron jugadores que coincidan con '" << busqueda << "'.\n" << endl;
+    } else {
+        cout << "\nResultados de la busqueda:" << endl;
+        mostrarListaJugadores(resultados, cantidad, s);
+        delete[] resultados; //Liberamos la bandeja temporal
+    }
+}
+
+//Menu para actualizar los datos de un jugador
+void menuActualizarJugador(SistemaDeportivo* s) {
+    int id;
+    cout << "\n--- ACTUALIZAR JUGADOR ---" << endl;
+    cout << "Ingrese el ID del jugador a actualizar: ";
+    leerEntero(id);
+
+    Jugador* actual = buscarJugadorPorID(s, id);
+    if (actual == nullptr) {//Validamos que exista
+        cout << "ERROR: No existe ningun jugador con ID " << id << ".\n" << endl;
+        return;
+    }
+
+    mostrarJugador(actual, s);
+
+    Jugador datosNuevos;
+    cout << "\nIngrese el nuevo nombre: ";
+    leerCadena(datosNuevos.nombre, 100);
+    cout << "Ingrese la nueva cedula: ";
+    leerCadena(datosNuevos.cedula, 20);
+    cout << "Ingrese la nueva posicion (PORTERO, DEFENSA, MEDIOCAMPISTA, DELANTERO): ";
+    leerCadena(datosNuevos.posicion, 20);
+    cout << "Ingrese la nueva edad: ";
+    leerEntero(datosNuevos.edad);
+    cout << "Ingrese el nuevo dorsal: ";
+    leerEntero(datosNuevos.numeroDorsal);
+
+    char confirmacion;
+    cout << "\n¿Desea guardar los cambios? (S/N): ";
+    cin >> confirmacion;
+    
+    if (toupper(confirmacion) == 'S') {
+        if (actualizarJugador(s, id, datosNuevos)) {
+            cout << "Jugador actualizado exitosamente.\n" << endl;
+        }
+    } else {
+        cout << "Actualizacion cancelada.\n" << endl;
+    }
+}
+
+//Menu general para listar todos los jugadores
+void menuListarJugadores(SistemaDeportivo* s) {
+    int cantidad = 0;
+    Jugador** todos = listarJugadores(s, &cantidad);
+    
+    if (todos == nullptr) {
+        cout << "\nNo hay jugadores registrados en el sistema.\n" << endl;
+    } else {
+        cout << "\n--- LISTADO GENERAL DE JUGADORES ---" << endl;
+        mostrarListaJugadores(todos, cantidad, s);
+        delete[] todos; //Liberamos la bandeja
+    }
+}
+
+//Menu para eliminar jugador
+void menuEliminarJugador(SistemaDeportivo* s) {
+    int id;
+    cout << "\n--- ELIMINAR JUGADOR ---" << endl;
+    cout << "Ingrese el ID del jugador a eliminar: ";
+    leerEntero(id);
+
+    Jugador* actual = buscarJugadorPorID(s, id);
+    if (actual == nullptr) {
+        cout << "ERROR: No existe ningun jugador con ID " << id << ".\n" << endl;
+        return;
+    }
+
+    mostrarJugador(actual, s);
+
+    char confirmacion;
+    cout << "\n¿Esta seguro que desea eliminar este jugador? (S/N): ";
+    cin >> confirmacion;
+
+    if (toupper(confirmacion) == 'S') {
+        if (eliminarJugador(s, id)) {
+            cout << "Jugador eliminado exitosamente del sistema.\n" << endl;
+        } else {
+            cout << "ERROR: No se pudo eliminar el jugador.\n" << endl;
+        }
+    } else {
+        cout << "Eliminacion cancelada.\n" << endl;
+    }
+}
+
 
 int main() {
     SetConsoleOutputCP(CP_UTF8);
