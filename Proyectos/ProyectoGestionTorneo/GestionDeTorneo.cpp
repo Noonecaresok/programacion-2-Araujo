@@ -319,31 +319,30 @@ return nullptr;
 }
 
 Equipo** buscarEquiposPorNombre(SistemaDeportivo* s, const char* subcadena, int* cantidad){
-*cantidad = 0; //Reiniciamos el valor de cantidad a su predeterminado, 0
+    *cantidad = 0; 
+    char cad[100], sub[100];
+    
+    //Convertimos subcadena a minusculas para comparar
+    for(int j = 0; subcadena[j] != '\0'; j++) sub[j] = tolower(subcadena[j]);
+    sub[strlen(subcadena)] = '\0';
 
-
-    for(int i = 0; i < s->numEquipos; i++){ //En este for mediante la funcion strstr buscamos las coincidencias, primero su cantidad
-
-    if(strstr(s->equipos[i].nombre, subcadena) != nullptr){ 
-       *cantidad+=1;
+    for(int i = 0; i < s->numEquipos; i++){ 
+        for(int j = 0; s->equipos[i].nombre[j] != '\0'; j++) cad[j] = tolower(s->equipos[i].nombre[j]);
+        cad[strlen(s->equipos[i].nombre)] = '\0';
+        if(strstr(cad, sub) != nullptr) *cantidad += 1;
     }
 
+    Equipo** busqueda = new Equipo*[*cantidad]; 
+    int pos = 0;
+    for(int i = 0; i < s->numEquipos; i++){ 
+        for(int j = 0; s->equipos[i].nombre[j] != '\0'; j++) cad[j] = tolower(s->equipos[i].nombre[j]);
+        cad[strlen(s->equipos[i].nombre)] = '\0';
+        if(strstr(cad, sub) != nullptr){
+            busqueda[pos] = &(s->equipos[i]);
+            pos++;
+        }
     }
-
-Equipo** busqueda = new Equipo*[*cantidad]; //Gracias a la cantidad podemos crear un array dinamico con la nueva cantidad, en este array almacenaremos las coincidencias
-
-int pos = 0;
-for(int i = 0; i < s->numEquipos; i++){ //Ahora buscamos nuevamente las coincidencias y las almacenamos en el array dinamico que creamos
-if(strstr(s->equipos[i].nombre, subcadena) != nullptr){
-      busqueda[pos] = &(s->equipos[i]);
-      pos++;
-    }
-
-
-}
-
-return busqueda;
-
+    return busqueda;
 }
 
 //Esta funcion devuelve una copia de los equipos activos, en forma de array dinamico, este array dinamico contiene la direccion de memoria de cada equipo
@@ -502,28 +501,28 @@ Jugador* buscarJugadorPorID(SistemaDeportivo* s, int id){
 
 //Retorna array temporal de punteros a jugadores los cuales el nombre coincida
 Jugador** buscarJugadoresPorNombre(SistemaDeportivo* s, const char* subcadena, int* cantidad){
-    *cantidad = 0; //Reiniciamos el valor a 0
+    *cantidad = 0; 
+    char cad[100], sub[100];
+    for(int j = 0; subcadena[j] != '\0'; j++) sub[j] = tolower(subcadena[j]);
+    sub[strlen(subcadena)] = '\0';
 
-    for(int i = 0; i < s->numJugadores; i++){ //Buscamos cuantas coincidencias hay con strstr
-        if(strstr(s->jugadores[i].nombre, subcadena) != nullptr){ 
-            *cantidad += 1;
-        }
+    for(int i = 0; i < s->numJugadores; i++){ 
+        for(int j = 0; s->jugadores[i].nombre[j] != '\0'; j++) cad[j] = tolower(s->jugadores[i].nombre[j]);
+        cad[strlen(s->jugadores[i].nombre)] = '\0';
+        if(strstr(cad, sub) != nullptr) *cantidad += 1;
     }
+    if(*cantidad == 0) return nullptr; 
 
-    if(*cantidad == 0){
-        return nullptr; //Si no hay coincidencias retornamos nullptr
-    }
-
-    Jugador** busqueda = new Jugador*[*cantidad]; //Creamos array dinamico con la cantidad exacta
-
+    Jugador** busqueda = new Jugador*[*cantidad]; 
     int pos = 0;
-    for(int i = 0; i < s->numJugadores; i++){ //Ahora guardamos las direcciones de esas coincidencias
-        if(strstr(s->jugadores[i].nombre, subcadena) != nullptr){
+    for(int i = 0; i < s->numJugadores; i++){ 
+        for(int j = 0; s->jugadores[i].nombre[j] != '\0'; j++) cad[j] = tolower(s->jugadores[i].nombre[j]);
+        cad[strlen(s->jugadores[i].nombre)] = '\0';
+        if(strstr(cad, sub) != nullptr){
             busqueda[pos] = &(s->jugadores[i]);
             pos++;
         }
     }
-
     return busqueda;
 }
 
@@ -836,24 +835,24 @@ void mostrarListaEquipos(Equipo** equipos, int cantidad) {
 //Llama a la logica de ordenamiento y dibuja la tabla del torneo
 void mostrarTablaPosiciones(SistemaDeportivo* s) {
     int cantidad = 0;
-    Equipo** tabla = generarTablaPosiciones(s, &cantidad); //Llamamos a la logica
+    Equipo** tabla = generarTablaPosiciones(s, &cantidad); 
 
     if (tabla == nullptr || cantidad == 0) {
         cout << "\nNo hay equipos registrados para mostrar la tabla.\n" << endl;
         return;
     }
 
-    cout << "\n╔══════════════════════════════════════════════════════════════════════╗" << endl;
-    cout << "║                      TABLA DE POSICIONES                             ║" << endl;
-    cout << "║                      " << left << setw(40) << s->torneo.nombre << "          ║" << endl;
-    cout << "╠════╦══════════════════╦═════╦═══╦═══╦═══╦════╦════╦════╗" << endl;
-    cout << "║ #  ║ Equipo           ║ PTS ║ J ║ G ║ E ║ D  ║ GF ║ GC ║" << endl;
-    cout << "╠════╬══════════════════╬═════╬═══╬═══╬═══╬════╬════╬════╣" << endl;
+    cout << "\n╔═════════════════════════════════════════════════════════════════════════╗" << endl;
+    cout << "║                       TABLA DE POSICIONES                               ║" << endl;
+    cout << "║                       " << left << setw(42) << s->torneo.nombre << "║" << endl;
+    cout << "╠════╦═══════════════════════╦═════╦═══╦═══╦═══╦════╦════╦════╗           " << endl;
+    cout << "║ #  ║ Equipo                ║ PTS ║ J ║ G ║ E ║ D  ║ GF ║ GC ║           " << endl;
+    cout << "╠════╬═══════════════════════╬═════╬═══╬═══╬═══╬════╬════╬════╣           " << endl;
 
     for (int i = 0; i < cantidad; i++) {
         int jugados = tabla[i]->victorias + tabla[i]->empates + tabla[i]->derrotas;
         cout << "║ " << setw(2) << (i + 1) << " ║ "
-             << left << setw(16) << tabla[i]->nombre << right << " ║ "
+             << left << setw(21) << tabla[i]->nombre << right << " ║ "
              << setw(3) << tabla[i]->puntos << " ║ "
              << setw(1) << jugados << " ║ "
              << setw(1) << tabla[i]->victorias << " ║ "
@@ -862,9 +861,9 @@ void mostrarTablaPosiciones(SistemaDeportivo* s) {
              << setw(2) << tabla[i]->puntosAFavor << " ║ "
              << setw(2) << tabla[i]->puntosEnContra << " ║" << endl;
     }
-    cout << "╚════╩══════════════════╩═════╩═══╩═══╩═══╩════╩════╩════╝\n" << endl;
+    cout << "╚════╩═══════════════════════╩═════╩═══╩═══╩═══╩════╩════╩════╝\n" << endl;
 
-    delete[] tabla; //Liberamos la bandeja temporal para evitar fugas de memoria
+    delete[] tabla; 
 }
 
 //Menu para registrar un nuevo equipo interactuando con el usuario
@@ -1107,6 +1106,14 @@ void menuRegistrarJugador(SistemaDeportivo* s) {
         return;
     }
 
+    // Chequeo de dorsal despues de pedirlo
+    for(int i = 0; i < s->numJugadores; i++){
+        if(s->jugadores[i].idEquipo == idEquipo && s->jugadores[i].numeroDorsal == dorsal){
+            cout << "ERROR: El dorsal " << dorsal << " ya esta en uso en el equipo '" << eq->nombre << "'.\n" << endl;
+            return;
+        }
+    }
+
     char confirmacion;
     cout << "\n¿Desea guardar este jugador? (S/N): ";
     cin >> confirmacion;
@@ -1244,10 +1251,10 @@ void mostrarPartido(Partido* partido, SistemaDeportivo* s) {
     cout << "║ Fecha       : " << left << setw(35) << partido->fecha << "║" << endl;
     cout << "║                                                  ║" << endl;
     
-    //Centramos el marcador en la consola
+    // Alineacion corregida matematicamente para 50 espacios
     cout << "║ " << right << setw(18) << nomLocal << "  " 
-         << partido->puntosLocal << " - " << partido->puntosVisitante << "  " 
-         << left << setw(18) << nomVisitante << " ║" << endl;
+         << setw(2) << partido->puntosLocal << "-" << left << setw(2) << partido->puntosVisitante 
+         << "  " << left << setw(18) << nomVisitante << " ║" << endl;
          
     cout << "║      (Local)                  (Visitante)        ║" << endl;
     cout << "║                                                  ║" << endl;
@@ -1486,6 +1493,24 @@ void subMenuJugadores(SistemaDeportivo* s) {
     } while (opcion != 0);
 }
 
+void menuBuscarPartidosPorEquipo(SistemaDeportivo* s) {
+    int idEq;
+    cout << "\n--- BUSCAR PARTIDOS POR EQUIPO ---" << endl;
+    cout << "Ingrese el ID del Equipo: ";
+    leerEntero(idEq);
+    int cant = 0;
+    Partido** lista = buscarPartidosPorEquipo(s, idEq, &cant);
+    if(lista == nullptr) cout << "No se encontraron partidos para ese equipo.\n" << endl;
+    else { mostrarListaPartidos(lista, cant, s); delete[] lista; }
+}
+
+void menuListarPartidosProgramados(SistemaDeportivo* s) {
+    int cant = 0;
+    Partido** lista = listarPartidosPorEstado(s, "PROGRAMADO", &cant);
+    if(lista == nullptr) cout << "No hay partidos en estado PROGRAMADO.\n" << endl;
+    else { mostrarListaPartidos(lista, cant, s); delete[] lista; }
+}
+
 //Submenu para gestionar la capa de partidos
 void subMenuPartidos(SistemaDeportivo* s) {
     int opcion;
@@ -1495,9 +1520,11 @@ void subMenuPartidos(SistemaDeportivo* s) {
         cout << "╠═══════════════════════════════════════════╣" << endl;
         cout << "║  1. Programar partido                     ║" << endl;
         cout << "║  2. Registrar resultado                   ║" << endl;
-        cout << "║  3. Buscar partido                        ║" << endl;
-        cout << "║  4. Listar partidos                       ║" << endl;
-        cout << "║  5. Cancelar partido                      ║" << endl;
+        cout << "║  3. Buscar partido (Por ID)               ║" << endl;
+        cout << "║  4. Listar TODOS los partidos             ║" << endl;
+        cout << "║  5. Buscar partidos por Equipo            ║" << endl;
+        cout << "║  6. Listar partidos PROGRAMADOS           ║" << endl;
+        cout << "║  7. Cancelar partido                      ║" << endl;
         cout << "║  0. Volver al menu principal              ║" << endl;
         cout << "╚═══════════════════════════════════════════╝" << endl;
         cout << "Seleccione una opcion: ";
@@ -1508,7 +1535,9 @@ void subMenuPartidos(SistemaDeportivo* s) {
             case 2: menuRegistrarResultado(s); break;
             case 3: menuBuscarPartido(s); break;
             case 4: menuListarPartidos(s); break;
-            case 5: menuCancelarPartido(s); break;
+            case 5: menuBuscarPartidosPorEquipo(s); break;
+            case 6: menuListarPartidosProgramados(s); break;
+            case 7: menuCancelarPartido(s); break;
             case 0: break;
             default: cout << "Opcion invalida.\n";
         }
