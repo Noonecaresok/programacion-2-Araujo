@@ -6,7 +6,7 @@ int const k = 100;
 struct Arma{
 char nombre[100];
 char descripcion[100];
-int damage;
+int damage = 0;
 
 };
 
@@ -32,9 +32,26 @@ damage = damage * (k/enemigo->defensa + k);
     return damage;
 }
 
-int recibirDamage(){
+void recibirDamage(int damage){
+
+
+if((this->vida-damage) < 0){
+    this->vida = 0;
+} else {
+    this->vida-=damage;
+}
 
 
 }
+
+};
+
+
+
+
+struct Partida{
+Ente* Jugador;
+
+
 
 };
