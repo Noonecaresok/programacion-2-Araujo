@@ -532,7 +532,6 @@ bool guardarPartido(Partido& partido) {
     partido.fechaCreacion = time(0);
     partido.fechaUltimaModificacion = time(0);
     
-    // Limpiamos los structs de goles por seguridad
     for(int i=0; i<22; i++) {
         partido.goles[i].idJugador = 0;
         partido.goles[i].minuto = 0;
@@ -561,6 +560,22 @@ bool obtenerPartidoPorID(int id, Partido& resultado) {
 
     archivo.seekg(sizeof(ArchivoHeader) + (indice * sizeof(Partido)), ios::beg);
     archivo.read(reinterpret_cast<char*>(&resultado), sizeof(Partido));
+    archivo.close();
+    return true;
+}
+
+// Nueva funcion clave para el Commit 4 (Actualizar partido en disco)
+bool actualizarPartidoBin(Partido& partido) {
+    int indice = buscarIndicePartidoPorID(partido.id);
+    if (indice == -1) return false;
+
+    partido.fechaUltimaModificacion = time(0);
+
+    ofstream archivo("partidos.bin", ios::binary | ios::in | ios::out);
+    if (!archivo.is_open()) return false;
+
+    archivo.seekp(sizeof(ArchivoHeader) + (indice * sizeof(Partido)), ios::beg);
+    archivo.write(reinterpret_cast<const char*>(&partido), sizeof(Partido));
     archivo.close();
     return true;
 }
@@ -1004,14 +1019,13 @@ void subMenuJugadores() {
 }
 
 
-// Capa de presentacion de Partidos
+// Capa de presentacion de Partidos (Operaciones compuestas)
 
 void mostrarPartido(Partido& partido) {
     Equipo local, visitante;
     char nomLocal[100] = "Desconocido";
     char nomVisitante[100] = "Desconocido";
     
-    // Cruce de archivos para mostrar nombres bonitos en vez de solo IDs
     if (obtenerEquipoPorID(partido.idEquipoLocal, local)) strcpy(nomLocal, local.nombre);
     if (obtenerEquipoPorID(partido.idEquipoVisitante, visitante)) strcpy(nomVisitante, visitante.nombre);
 
@@ -1026,7 +1040,22 @@ void mostrarPartido(Partido& partido) {
          << setw(2) << partido.golesLocal << "-" << left << setw(2) << partido.golesVisitante 
          << "  " << left << setw(18) << nomVisitante << " ║" << endl;
     cout << "║      (Local)                  (Visitante)        ║" << endl;
-    cout << "║                                                  ║" << endl;
+    
+    if(partido.numGoles > 0) {
+        cout << "╠══════════════════════════════════════════════════╣" << endl;
+        cout << "║ GOLES REGISTRADOS:                               ║" << endl;
+        for(int i=0; i < partido.numGoles; i++) {
+            Jugador j;
+            char nombreJugador[40] = "Desconocido";
+            if(partido.goles[i].idJugador != 0 && obtenerJugadorPorID(partido.goles[i].idJugador, j)) {
+                strncpy(nombreJugador, j.nombre, 39);
+            }
+            cout << "║ [" << left << setw(9) << partido.goles[i].equipo << "] Min." << setw(3) << partido.goles[i].minuto 
+                 << " - " << left << setw(22) << nombreJugador << " ║" << endl;
+        }
+    }
+    
+    cout << "╠══════════════════════════════════════════════════╣" << endl;
     cout << "║ Notas: " << left << setw(42) << partido.descripcion << "║" << endl;
     cout << "╚══════════════════════════════════════════════════╝\n" << endl;
 }
@@ -1052,14 +1081,12 @@ void menuProgramarPartido() {
         return;
     }
 
-    // Validar que existan ambos
     Equipo local, visitante;
     if (!obtenerEquipoPorID(nuevo.idEquipoLocal, local) || !obtenerEquipoPorID(nuevo.idEquipoVisitante, visitante)) {
         cout << "ERROR: Uno o ambos equipos no existen o estan eliminados.\n" << endl;
         return;
     }
 
-    // Validar que no tengan partido programado entre ellos ya
     Partido tempBuffer[100];
     int cantidad = listarPartidosPorEstadoBin("PROGRAMADO", tempBuffer, 100);
     for(int i = 0; i < cantidad; i++) {
@@ -1091,6 +1118,216 @@ void menuProgramarPartido() {
             cout << "Error critico al escribir partido.\n" << endl;
         }
     }
+}
+
+// Operacion Compuesta 1: Registrar Resultado
+void menuRegistrarResultado() {
+    int idPartido;
+    cout << "\n--- REGISTRAR RESULTADO ---" << endl;
+    cout << "Ingrese el ID del Partido: ";
+    leerEntero(idPartido);
+
+    Partido p;
+    if (!obtenerPartidoPorID(idPartido, p)) {
+        cout << "ERROR: No existe el partido.\n" << endl; return;
+    }
+    if (strcmp(p.estado, "PROGRAMADO") != 0) {
+        cout << "ERROR: El partido ya fue jugado o cancelado.\n" << endl; return;
+    }
+
+    Equipo local, visitante;
+    if (!obtenerEquipoPorID(p.idEquipoLocal, local) || !obtenerEquipoPorID(p.idEquipoVisitante, visitante)) {
+        cout << "ERROR: Los equipos asociados al partido ya no existen.\n" << endl; return;
+    }
+
+    mostrarPartido(p);
+
+    cout << "\nGoles del equipo Local (" << local.nombre << "): ";
+    leerEntero(p.golesLocal);
+    cout << "Goles del equipo Visitante (" << visitante.nombre << "): ";
+    leerEntero(p.golesVisitante);
+
+    if (p.golesLocal < 0 || p.golesVisitante < 0) {
+        cout << "ERROR: Los goles no pueden ser negativos.\n" << endl; return;
+    }
+    
+    int totalGoles = p.golesLocal + p.golesVisitante;
+    if (totalGoles > 22) {
+        cout << "ERROR: El sistema soporta un limite maximo de 22 goles por partido.\n" << endl; return;
+    }
+
+    // Array temporal para almacenar los goles y luego guardarlos de golpe
+    Gol golesTemp[22];
+    int contadorGoles = 0;
+
+    if (p.golesLocal > 0) {
+        cout << "\n--- DETALLE DE GOLES LOCALES (" << local.nombre << ") ---" << endl;
+        for (int i = 0; i < p.golesLocal; i++) {
+            int min, idJug;
+            cout << "Gol Local #" << i+1 << " - Minuto (1-120): ";
+            leerEntero(min);
+            cout << "Gol Local #" << i+1 << " - ID del Jugador (0 = Autogol/Desconocido): ";
+            leerEntero(idJug);
+
+            if (idJug != 0) {
+                Jugador j;
+                if (!obtenerJugadorPorID(idJug, j) || j.idEquipo != local.id) {
+                    cout << "ADVERTENCIA: Jugador invalido o no pertenece a " << local.nombre << ". Se marcara como Desconocido (0).\n";
+                    idJug = 0;
+                }
+            }
+            golesTemp[contadorGoles].idJugador = idJug;
+            golesTemp[contadorGoles].minuto = min;
+            strcpy(golesTemp[contadorGoles].equipo, "LOCAL");
+            contadorGoles++;
+        }
+    }
+
+    if (p.golesVisitante > 0) {
+        cout << "\n--- DETALLE DE GOLES VISITANTES (" << visitante.nombre << ") ---" << endl;
+        for (int i = 0; i < p.golesVisitante; i++) {
+            int min, idJug;
+            cout << "Gol Visitante #" << i+1 << " - Minuto (1-120): ";
+            leerEntero(min);
+            cout << "Gol Visitante #" << i+1 << " - ID del Jugador (0 = Autogol/Desconocido): ";
+            leerEntero(idJug);
+
+            if (idJug != 0) {
+                Jugador j;
+                if (!obtenerJugadorPorID(idJug, j) || j.idEquipo != visitante.id) {
+                    cout << "ADVERTENCIA: Jugador invalido o no pertenece a " << visitante.nombre << ". Se marcara como Desconocido (0).\n";
+                    idJug = 0;
+                }
+            }
+            golesTemp[contadorGoles].idJugador = idJug;
+            golesTemp[contadorGoles].minuto = min;
+            strcpy(golesTemp[contadorGoles].equipo, "VISITANTE");
+            contadorGoles++;
+        }
+    }
+
+    char confirmacion;
+    cout << "\n¿Procesar y guardar resultado definitivo en todos los archivos? (S/N): ";
+    cin >> confirmacion;
+    
+    if (toupper(confirmacion) == 'S') {
+        // 1. Guardar goles en el partido
+        p.numGoles = contadorGoles;
+        for(int i=0; i<contadorGoles; i++) {
+            p.goles[i] = golesTemp[i];
+        }
+        strcpy(p.estado, "JUGADO");
+
+        // 2. Actualizar estadisticas de equipos
+        local.puntosAFavor += p.golesLocal;
+        local.puntosEnContra += p.golesVisitante;
+        visitante.puntosAFavor += p.golesVisitante;
+        visitante.puntosEnContra += p.golesLocal;
+
+        if (p.golesLocal > p.golesVisitante) {
+            local.puntos += 3; local.victorias++; visitante.derrotas++;
+        } else if (p.golesLocal == p.golesVisitante) {
+            local.puntos += 1; visitante.puntos += 1; local.empates++; visitante.empates++;
+        } else {
+            visitante.puntos += 3; visitante.victorias++; local.derrotas++;
+        }
+        
+        // Agregar ID del partido al historial del equipo
+        if(local.cantidadPartidos < 50) local.partidosIDs[local.cantidadPartidos++] = p.id;
+        if(visitante.cantidadPartidos < 50) visitante.partidosIDs[visitante.cantidadPartidos++] = p.id;
+
+        // 3. Escribir Equipos y Partido en disco
+        actualizarEquipoBin(local);
+        actualizarEquipoBin(visitante);
+        actualizarPartidoBin(p);
+
+        // 4. Actualizar estadisticas de jugadores (abriendo disco jugador por jugador)
+        for(int i=0; i<contadorGoles; i++) {
+            if(golesTemp[i].idJugador != 0) {
+                Jugador goleador;
+                if(obtenerJugadorPorID(golesTemp[i].idJugador, goleador)) {
+                    goleador.golesAnotados++;
+                    actualizarJugadorBin(goleador);
+                }
+            }
+        }
+
+        cout << "\nOperacion completada: Archivos de Partidos, Equipos y Jugadores sincronizados.\n";
+        mostrarPartido(p);
+    }
+}
+
+// Operacion Compuesta 2: Cancelar Partido
+void menuCancelarPartido() {
+    int idPartido;
+    cout << "\n--- CANCELAR PARTIDO ---" << endl;
+    cout << "Ingrese el ID del Partido: ";
+    leerEntero(idPartido);
+
+    Partido p;
+    if (!obtenerPartidoPorID(idPartido, p)) {
+        cout << "ERROR: Partido no existe.\n"; return;
+    }
+    if (strcmp(p.estado, "CANCELADO") == 0) {
+        cout << "ERROR: Ya esta cancelado.\n"; return;
+    }
+
+    mostrarPartido(p);
+
+    char confirmacion;
+    cout << "\nADVERTENCIA: ¿Seguro que desea CANCELARLO? (S/N): ";
+    cin >> confirmacion;
+    if (toupper(confirmacion) != 'S') return;
+
+    // Si ya fue jugado, revertimos toda la data
+    if (strcmp(p.estado, "JUGADO") == 0) {
+        Equipo local, visitante;
+        if (obtenerEquipoPorID(p.idEquipoLocal, local) && obtenerEquipoPorID(p.idEquipoVisitante, visitante)) {
+            // Revertir goles de equipos
+            local.puntosAFavor -= p.golesLocal;
+            local.puntosEnContra -= p.golesVisitante;
+            visitante.puntosAFavor -= p.golesVisitante;
+            visitante.puntosEnContra -= p.golesLocal;
+
+            // Revertir puntos y resultados
+            if (p.golesLocal > p.golesVisitante) {
+                local.puntos -= 3; local.victorias--; visitante.derrotas--;
+            } else if (p.golesLocal == p.golesVisitante) {
+                local.puntos -= 1; visitante.puntos -= 1; local.empates--; visitante.empates--;
+            } else {
+                visitante.puntos -= 3; visitante.victorias--; local.derrotas--;
+            }
+
+            actualizarEquipoBin(local);
+            actualizarEquipoBin(visitante);
+        }
+
+        // Revertir goles de jugadores
+        for(int i=0; i<p.numGoles; i++) {
+            if(p.goles[i].idJugador != 0) {
+                Jugador goleador;
+                if(obtenerJugadorPorID(p.goles[i].idJugador, goleador)) {
+                    goleador.golesAnotados--;
+                    actualizarJugadorBin(goleador);
+                }
+            }
+        }
+        
+        // Limpiar array de goles del partido
+        p.golesLocal = 0;
+        p.golesVisitante = 0;
+        p.numGoles = 0;
+        for(int i=0; i<22; i++) {
+            p.goles[i].idJugador = 0;
+            p.goles[i].minuto = 0;
+            strcpy(p.goles[i].equipo, "");
+        }
+    }
+
+    strcpy(p.estado, "CANCELADO");
+    actualizarPartidoBin(p);
+    
+    cout << "\nPartido cancelado. Si tenia resultados registrados, se han revertido en la base de datos.\n";
 }
 
 void menuBuscarPartido() {
@@ -1146,12 +1383,12 @@ void subMenuPartidos() {
         cout << "║        GESTION DE PARTIDOS                ║" << endl;
         cout << "╠═══════════════════════════════════════════╣" << endl;
         cout << "║  1. Programar partido                     ║" << endl;
-        cout << "║  2. Registrar resultado (Fase 4 - Noche)  ║" << endl;
+        cout << "║  2. Registrar resultado (COMPLETO)        ║" << endl;
         cout << "║  3. Buscar partido (Por ID)               ║" << endl;
         cout << "║  4. Listar TODOS los partidos             ║" << endl;
         cout << "║  5. Buscar partidos por Equipo            ║" << endl;
         cout << "║  6. Listar partidos PROGRAMADOS           ║" << endl;
-        cout << "║  7. Cancelar partido (Fase 4 - Noche)     ║" << endl;
+        cout << "║  7. Cancelar partido (COMPLETO)           ║" << endl;
         cout << "║  0. Volver al menu principal              ║" << endl;
         cout << "╚═══════════════════════════════════════════╝" << endl;
         cout << "Seleccione una opcion: ";
@@ -1159,12 +1396,12 @@ void subMenuPartidos() {
 
         switch (opcion) {
             case 1: menuProgramarPartido(); break;
-            case 2: cout << "\n[En construccion para el proximo commit...]\n"; break;
+            case 2: menuRegistrarResultado(); break;
             case 3: menuBuscarPartido(); break;
             case 4: menuListarPartidos(); break;
             case 5: menuBuscarPartidosPorEquipo(); break;
             case 6: menuListarPartidosProgramados(); break;
-            case 7: cout << "\n[En construccion para el proximo commit...]\n"; break;
+            case 7: menuCancelarPartido(); break;
             case 0: break;
             default: cout << "Opcion invalida.\n";
         }
