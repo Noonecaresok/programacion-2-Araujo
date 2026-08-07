@@ -5,12 +5,12 @@
 
 using namespace std;
 
-// 1. CONSTRUCTORES
-// Constructor por defecto: Inicializa todo en cero o vacío
+//CONSTRUCTORES
+//Constructor por defecto: Inicializa todo en cero o vacío
 Equipo::Equipo() {
     id = 0;
     strcpy(nombre, "");
-    strcpy(city, "");
+    strcpy(ciudad, "");
     strcpy(entrenador, "");
     puntos = 0;
     victorias = 0;
@@ -25,11 +25,11 @@ Equipo::Equipo() {
     fechaUltimaModificacion = time(0);
 }
 
-// Constructor parametrizado: Ideal para cuando el usuario registra uno nuevo
+//Constructor parametrizado: Ideal para cuando el usuario registra uno nuevo
 Equipo::Equipo(const char* _nombre, const char* _city, const char* _entrenador) {
-    id = 0; // Se asignará luego desde el GestorArchivos
+    id = 0; //Se asignará luego desde el GestorArchivos
     strcpy(nombre, _nombre);
-    strcpy(city, _city);
+    strcpy(ciudad, _city);
     strcpy(entrenador, _entrenador);
     puntos = 0;
     victorias = 0;
@@ -44,10 +44,10 @@ Equipo::Equipo(const char* _nombre, const char* _city, const char* _entrenador) 
     fechaUltimaModificacion = time(0);
 }
 
-// 2. GETTERS (Simplemente retornan el valor)
+//GETTERS (Simplemente retornan el valor)
 int Equipo::getId() const { return id; }
 const char* Equipo::getNombre() const { return nombre; }
-const char* Equipo::getCity() const { return city; }
+const char* Equipo::getCity() const { return ciudad; }
 const char* Equipo::getEntrenador() const { return entrenador; }
 
 int Equipo::getPuntos() const { return puntos; }
@@ -62,7 +62,7 @@ bool Equipo::isEliminado() const { return eliminado; }
 time_t Equipo::getFechaCreacion() const { return fechaCreacion; }
 time_t Equipo::getFechaUltimaModificacion() const { return fechaUltimaModificacion; }
 
-// 3. SETTERS (Con validación y actualización automática de fecha)
+//SETTERS (Con validación y actualización automática de fecha)
 void Equipo::setId(int _id) { 
     this->id = _id; 
 }
@@ -76,7 +76,7 @@ bool Equipo::setNombre(const char* _nombre) {
 
 bool Equipo::setCity(const char* _city) {
     if (strlen(_city) == 0 || strlen(_city) >= 100) return false;
-    strcpy(this->city, _city);
+    strcpy(this->ciudad, _city);
     actualizarFechaModificacion();
     return true;
 }
@@ -97,9 +97,9 @@ void Equipo::actualizarFechaModificacion() {
     this->fechaUltimaModificacion = time(0);
 }
 
-// 4. MÉTODOS DE NEGOCIO (¡Aquí está la verdadera POO!)
+//MÉTODOS DE NEGOCIO 
 bool Equipo::registrarPartido(int idPartido) {
-    if (cantidadPartidos >= 50) return false; // Tope del arreglo alcanzado
+    if (cantidadPartidos >= 50) return false; //Tope del arreglo alcanzado
     partidosIDs[cantidadPartidos] = idPartido;
     cantidadPartidos++;
     actualizarFechaModificacion();
@@ -122,17 +122,17 @@ void Equipo::registrarResultado(int golesFavor, int golesContra) {
     actualizarFechaModificacion();
 }
 
-// 5. MÉTODOS DE PRESENTACIÓN
+//MÉTODOS DE PRESENTACIÓN
 void Equipo::mostrarBasico() const {
     cout << "ID: " << setw(2) << id << " | " << left << setw(28) << nombre 
-         << " | Ciudad: " << city << endl;
+         << " | Ciudad: " << ciudad << endl;
 }
 
 void Equipo::mostrarDetalle() const {
     cout << "\n--- DATOS DEL EQUIPO ---" << endl;
     cout << "ID: " << id << endl;
     cout << "Nombre: " << nombre << endl;
-    cout << "Ciudad: " << city << endl;
+    cout << "Ciudad: " << ciudad << endl;
     cout << "Entrenador: " << entrenador << endl;
     cout << "Estadisticas:" << endl;
     cout << " Puntos: " << puntos << " | V: " << victorias << " | E: " << empates << " | D: " << derrotas << endl;
@@ -140,7 +140,7 @@ void Equipo::mostrarDetalle() const {
     cout << "------------------------\n" << endl;
 }
 
-// 6. MÉTODO ESTÁTICO
+//MÉTODO ESTÁTICO
 size_t Equipo::obtenerTamano() {
     return sizeof(Equipo);
 }

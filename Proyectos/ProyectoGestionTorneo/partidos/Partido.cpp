@@ -42,7 +42,7 @@ void Partido::setEliminado(bool estado) {
 }
 void Partido::actualizarFechaModificacion() { this->fechaUltimaModificacion = time(0); }
 
-// ¡Magia de la POO! El partido registra sus propios goles internamente
+//El partido registra sus propios goles internamente
 bool Partido::registrarGol(int _idJugador, int _minuto, const char* _equipoTipo) {
     if (numGoles >= 22) return false; // Tope máximo
     

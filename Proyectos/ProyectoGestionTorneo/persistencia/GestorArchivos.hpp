@@ -9,7 +9,7 @@ using namespace std;
 
 class GestorArchivos {
 private:
-    // Método privado auxiliar para buscar la posición física (índice) de un registro
+    //Método privado auxiliar para buscar la posición física (índice) de un registro
     template <typename T>
     static int buscarIndice(const char* ruta, int id) {
         ifstream archivo(ruta, ios::binary);
@@ -21,7 +21,7 @@ private:
         T temp;
         for (int i = 0; i < h.cantidadRegistros; i++) {
             archivo.read(reinterpret_cast<char*>(&temp), sizeof(T));
-            // Asume que la clase T tiene los metodos getId() y isEliminado()
+            //Asume que la clase T tiene los metodos getId() y isEliminado()
             if (temp.getId() == id && !temp.isEliminado()) {
                 archivo.close();
                 return i;
@@ -32,7 +32,7 @@ private:
     }
 
 public:
-    // Inicializa el archivo con un header si no existe
+    //Inicializa el archivo con un header si no existe
     template <typename T>
     static bool inicializarArchivo(const char* ruta) {
         ifstream validador(ruta, ios::binary);
@@ -49,7 +49,7 @@ public:
         return true;
     }
 
-    // Lee el header de un archivo
+    //Lee el header de un archivo
     static ArchivoHeader leerHeader(const char* ruta) {
         ArchivoHeader header = {0, 1, 0, 1}; 
         ifstream archivo(ruta, ios::binary);
@@ -60,7 +60,7 @@ public:
         return header;
     }
 
-    // Actualiza el header de un archivo
+    //Actualiza el header de un archivo
     static bool actualizarHeader(const char* ruta, ArchivoHeader header) {
         ofstream archivo(ruta, ios::binary | ios::in | ios::out); 
         if (!archivo.is_open()) return false;
@@ -70,17 +70,17 @@ public:
         return true;
     }
 
-    // Guarda un nuevo registro (Funciona para Equipo, Jugador, Partido, etc.)
+    //Guarda un nuevo registro (Funciona para Equipo, Jugador, Partido, etc.)
     template <typename T>
     static bool guardarRegistro(const char* ruta, T& entidad) {
         ArchivoHeader h = leerHeader(ruta);
         
-        entidad.setId(h.proximoID); // Asignamos el ID correlativo
+        entidad.setId(h.proximoID); //Asignamos el ID correlativo
 
         ofstream archivo(ruta, ios::binary | ios::in | ios::out);
         if (!archivo.is_open()) return false;
 
-        // Calculamos la posición: Header + (cantidadRegistros * sizeof(T))
+        //Calculamos la posición: Header + (cantidadRegistros * sizeof(T))
         archivo.seekp(sizeof(ArchivoHeader) + (h.cantidadRegistros * sizeof(T)), ios::beg);
         archivo.write(reinterpret_cast<const char*>(&entidad), sizeof(T));
         archivo.close();
@@ -91,7 +91,7 @@ public:
         return actualizarHeader(ruta, h);
     }
 
-    // Obtiene un registro por su ID mediante Acceso Aleatorio
+    //Obtiene un registro por su ID mediante Acceso Aleatorio
     template <typename T>
     static bool obtenerRegistroPorID(const char* ruta, int id, T& resultado) {
         int indice = buscarIndice<T>(ruta, id);
@@ -107,7 +107,7 @@ public:
         return true;
     }
 
-    // Sobrescribe un registro existente
+    //Sobrescribe un registro existente
     template <typename T>
     static bool actualizarRegistro(const char* ruta, const T& entidad) {
         int indice = buscarIndice<T>(ruta, entidad.getId());

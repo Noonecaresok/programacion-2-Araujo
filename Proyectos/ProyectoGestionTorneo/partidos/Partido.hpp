@@ -7,7 +7,7 @@
 
 class Partido {
 private:
-    // Mismo orden exacto del struct original
+    //Mismo orden exacto del struct original
     int  id;
     int  idEquipoLocal;
     int  idEquipoVisitante;
@@ -18,7 +18,7 @@ private:
     int  golesLocal;
     int  golesVisitante;
 
-    Gol  goles[22];        // ¡COMPOSICIÓN! Un arreglo de objetos Gol
+    Gol  goles[22];        //COMPOSICIÓN, Un arreglo de objetos Gol
     int  numGoles;
 
     bool   eliminado;
@@ -42,13 +42,13 @@ public:
     Gol getGol(int indice) const; // Para leer un gol específico
     bool isEliminado() const;
 
-    // Setters
+    //Setters
     void setId(int _id);
     void setEstado(const char* _estado);
     void setEliminado(bool estado);
     void actualizarFechaModificacion();
 
-    // Métodos de Negocio (El partido se gestiona a sí mismo)
+    //Métodos de Negocio (El partido se gestiona a sí mismo)
     bool registrarGol(int _idJugador, int _minuto, const char* _equipoTipo);
     void finalizarPartido();
 

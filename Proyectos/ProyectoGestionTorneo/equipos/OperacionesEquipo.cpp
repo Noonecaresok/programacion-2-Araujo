@@ -6,25 +6,25 @@
 
 using namespace std;
 
-// Definimos la ruta del archivo
+//Definimos la ruta del archivo
 const char* OperacionesEquipo::RUTA_EQUIPOS = "datos/equipos.bin";
 
 bool OperacionesEquipo::eliminarEquipo(int id) {
     Equipo equipo;
-    // 1. Buscamos el equipo usando nuestro Template de GestorArchivos
+    //Buscamos el equipo usando nuestro Template de GestorArchivos
     if (!GestorArchivos::obtenerRegistroPorID<Equipo>(RUTA_EQUIPOS, id, equipo)) {
-        return false; // El equipo no existe
+        return false; //El equipo no existe
     }
     
-    // 2. REGLA DE NEGOCIO: No se puede eliminar si ya tiene partidos asociados
+    //REGLA DE NEGOCIO: No se puede eliminar si ya tiene partidos asociados
     if (equipo.getCantidadPartidos() > 0) {
         return false; 
     }
 
-    // 3. Aplicamos el borrado lógico a través del setter
+    //Aplicamos el borrado lógico a través del setter
     equipo.setEliminado(true);
 
-    // 4. Guardamos los cambios en el disco
+    //Guardamos los cambios en el disco
     return GestorArchivos::actualizarRegistro<Equipo>(RUTA_EQUIPOS, equipo);
 }
 
@@ -33,7 +33,7 @@ int OperacionesEquipo::buscarPorNombre(const char* subcadena, Equipo resultados[
     Equipo temp;
     int encontrados = 0;
     
-    // Convertimos la búsqueda a minúsculas para que no importe cómo escriba el usuario
+    //Convertimos la búsqueda a minúsculas para que no importe cómo escriba el usuario
     char sub[100];
     for(int j = 0; subcadena[j] != '\0'; j++) sub[j] = tolower(subcadena[j]);
     sub[strlen(subcadena)] = '\0';
@@ -51,7 +51,7 @@ int OperacionesEquipo::buscarPorNombre(const char* subcadena, Equipo resultados[
             for(int j = 0; nombreOriginal[j] != '\0'; j++) cad[j] = tolower(nombreOriginal[j]);
             cad[strlen(nombreOriginal)] = '\0';
             
-            // Si la subcadena está dentro del nombre, lo agregamos a los resultados
+            //Si la subcadena está dentro del nombre, lo agregamos a los resultados
             if (strstr(cad, sub) != nullptr) {
                 resultados[encontrados] = temp;
                 encontrados++;
